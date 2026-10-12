@@ -1,0 +1,13 @@
+{
+  "name": "food-ordering-eai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mini Project Enterprise Application Integration (EAI) - Kelompok 5",
+  "scripts": {
+    "install:all": "npm --prefix order-service install && npm --prefix kitchen-service install",
+    "start:order": "npm --prefix order-service start",
+    "start:kitchen": "npm --prefix kitchen-service start",
+    "dev:order": "npm --prefix order-service run dev",
+    "dev:kitchen": "npm --prefix kitchen-service run dev"
+  }
+}
