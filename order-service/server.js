@@ -9,147 +9,78 @@ const KITCHEN_SERVICE_URL = process.env.KITCHEN_SERVICE_URL || 'http://localhost
 app.use(cors());
 app.use(express.json());
 
-// Log sederhana untuk tracing request integrasi
+// Logger request
 app.use((req, res, next) => {
   console.log(`[OrderService] ${req.method} ${req.url}`);
   next();
 });
 
-// 1. POST /api/orders - Buat pesanan baru & dispatch ke Kitchen Service
+// ==============================================================================
+// TUGAS DEV 1: ORDER SERVICE (PORT 3001)
+// Rujukan format request/response: docs/API_CONTRACT.md
+// ==============================================================================
+
+// 1. POST /api/orders
+// Buat pesanan baru dari kasir & dispatch ke Kitchen Service
 app.post('/api/orders', async (req, res) => {
   const { customer_name, items } = req.body;
 
-  if (!customer_name || !Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ error: 'customer_name dan items (array) wajib diisi' });
-  }
+  // TODO [Dev 1]:
+  // 1. Validasi input: pastikan customer_name ada dan items berbentuk array tidak kosong.
+  // 2. Hitung total_price dari seluruh item (price * quantity).
+  // 3. Simpan data pesanan ke tabel `orders` (status awal: 'PENDING') menggunakan db.prepare().
+  // 4. Simpan setiap item ke tabel `order_items` dengan `order_id` yang didapat.
+  // 5. Integrasi EAI (Order Dispatch):
+  //    - Kirim HTTP POST fetch ke `${KITCHEN_SERVICE_URL}/api/kitchen/tickets`
+  //    - Bawa payload: { correlation_id: orderId, order_id: orderId, customer_name, items }
+  //    - PERHATIAN: Jangan sertakan kolom harga/price saat kirim ke dapur!
+  //    - Jika kitchen berhasil menerima (status 201), update status order di orders.db menjadi 'IN_KITCHEN'
+  //      dan simpan kitchen_ticket_id yang dikembalikan dapur.
+  // 6. Kembalikan response HTTP 201 berisi detail order yang dibuat.
 
-  try {
-    const totalPrice = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
-
-    const insertOrder = db.prepare(`
-      INSERT INTO orders (customer_name, status, total_price)
-      VALUES (?, 'PENDING', ?)
-    `);
-    const insertItem = db.prepare(`
-      INSERT INTO order_items (order_id, item_name, quantity, price)
-      VALUES (?, ?, ?, ?)
-    `);
-
-    // Simpan order & item dalam satu transaksi
-    const orderTx = db.transaction(() => {
-      const info = insertOrder.run(customer_name, totalPrice);
-      const orderId = info.lastInsertRowid;
-      for (const item of items) {
-        insertItem.run(orderId, item.item_name, item.quantity, item.price);
-      }
-      return orderId;
-    });
-
-    const orderId = orderTx();
-
-    // Integrasi EAI (Order Dispatch ke Kitchen Service)
-    // PENTING: Dapur hanya menerima data produksi (tanpa harga)
-    let kitchenTicketId = null;
-    let currentStatus = 'PENDING';
-
-    try {
-      const dispatchPayload = {
-        correlation_id: orderId,
-        order_id: orderId,
-        customer_name,
-        items: items.map(it => ({
-          item_name: it.item_name,
-          quantity: it.quantity
-        }))
-      };
-
-      const kitchenResponse = await fetch(`${KITCHEN_SERVICE_URL}/api/kitchen/tickets`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dispatchPayload)
-      });
-
-      if (kitchenResponse.ok) {
-        const kitchenData = await kitchenResponse.json();
-        kitchenTicketId = kitchenData.ticket_id;
-        currentStatus = 'IN_KITCHEN';
-
-        db.prepare('UPDATE orders SET status = ?, kitchen_ticket_id = ? WHERE id = ?')
-          .run(currentStatus, kitchenTicketId, orderId);
-      } else {
-        console.warn(`[OrderService] Gagal dispatch ke kitchen (status ${kitchenResponse.status})`);
-      }
-    } catch (err) {
-      console.warn('[OrderService] Kitchen service tidak merespons (offline):', err.message);
-    }
-
-    const createdOrder = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
-    const orderItems = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(orderId);
-
-    return res.status(201).json({
-      ...createdOrder,
-      items: orderItems
-    });
-  } catch (error) {
-    console.error('[OrderService] Error create order:', error);
-    return res.status(500).json({ error: error.message });
-  }
+  res.status(501).json({ message: 'TODO: Dev 1 silakan implementasikan POST /api/orders' });
 });
 
-// 2. GET /api/orders - Ambil semua pesanan
+// 2. GET /api/orders
+// Ambil semua daftar pesanan beserta items-nya
 app.get('/api/orders', (req, res) => {
-  try {
-    const orders = db.prepare('SELECT * FROM orders ORDER BY id DESC').all();
-    const result = orders.map(order => {
-      const items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
-      return { ...order, items };
-    });
-    return res.json(result);
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
-  }
+  // TODO [Dev 1]:
+  // 1. Query semua baris dari tabel `orders` diurutkan dari yang terbaru (ORDER BY id DESC).
+  // 2. Sertakan items dari `order_items` untuk setiap order.
+  // 3. Kembalikan response JSON HTTP 200.
+
+  res.status(501).json({ message: 'TODO: Dev 1 silakan implementasikan GET /api/orders' });
 });
 
-// 3. GET /api/orders/:id - Ambil detail 1 pesanan
+// 3. GET /api/orders/:id
+// Ambil detail 1 pesanan berdasarkan ID
 app.get('/api/orders/:id', (req, res) => {
-  try {
-    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
-    if (!order) {
-      return res.status(404).json({ error: 'Order tidak ditemukan' });
-    }
-    const items = db.prepare('SELECT * FROM order_items WHERE order_id = ?').all(order.id);
-    return res.json({ ...order, items });
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
-  }
-});
-
-// 4. PATCH /api/orders/:id/status - Menerima Callback status dari Kitchen Service
-app.patch('/api/orders/:id/status', (req, res) => {
-  const { status } = req.body;
   const orderId = req.params.id;
 
-  if (!status) {
-    return res.status(400).json({ error: 'Status wajib diisi' });
-  }
+  // TODO [Dev 1]:
+  // 1. Query tabel `orders` WHERE id = orderId.
+  // 2. Jika tidak ada, kembalikan response 404 (Order tidak ditemukan).
+  // 3. Query items dari `order_items` WHERE order_id = orderId.
+  // 4. Kembalikan response JSON HTTP 200 berisi data order + items.
 
-  try {
-    const result = db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, orderId);
-    if (result.changes === 0) {
-      return res.status(404).json({ error: 'Order tidak ditemukan' });
-    }
+  res.status(501).json({ message: 'TODO: Dev 1 silakan implementasikan GET /api/orders/:id' });
+});
 
-    console.log(`[OrderService] Callback diterima: Order #${orderId} diupdate menjadi status ${status}`);
-    return res.json({
-      success: true,
-      order_id: Number(orderId),
-      new_status: status
-    });
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
-  }
+// 4. PATCH /api/orders/:id/status
+// Menerima Callback perubahan status dari Kitchen Service (e.g., COOKING, READY_FOR_PICKUP)
+app.patch('/api/orders/:id/status', (req, res) => {
+  const orderId = req.params.id;
+  const { status } = req.body;
+
+  // TODO [Dev 1]:
+  // 1. Validasi input: pastikan `status` ada.
+  // 2. Update status order di tabel `orders` WHERE id = orderId.
+  // 3. Jika orderId tidak ditemukan, kembalikan 404.
+  // 4. Kembalikan response HTTP 200 { success: true, order_id: Number(orderId), new_status: status }.
+
+  res.status(501).json({ message: 'TODO: Dev 1 silakan implementasikan PATCH /api/orders/:id/status' });
 });
 
 app.listen(PORT, () => {
-  console.log(`[OrderService] Aktif di http://localhost:${PORT}`);
+  console.log(`[OrderService] Server aktif di http://localhost:${PORT}`);
 });
