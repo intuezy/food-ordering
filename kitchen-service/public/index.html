@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kitchen Display System (KDS) - Port 3002</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --status-inkitchen: #f59e0b;
+      --status-cooking: #f97316;
+      --status-ready: #10b981;
+      --danger: #ef4444;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* HEADER */
+    header {
+      background: #111827;
+      border-bottom: 2px solid #1f2937;
+      padding: 14px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      font-size: 2rem;
+      background: #374151;
+      padding: 6px 10px;
+      border-radius: 10px;
+    }
+
+    .brand-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #fff;
+    }
+
+    .brand-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-port {
+      background: #1e3a8a;
+      color: #93c5fd;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+
+    .badge-eai {
+      background: #064e3b;
+      color: #6ee7b7;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.75rem;
+    }
+
+    /* TOP STATS */
+    .header-stats {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      background: #1f2937;
+      border: 1px solid #374151;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stat-num {
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+    }
+
+    .stat-num.yellow { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .stat-num.orange { background: rgba(249, 115, 22, 0.2); color: #fb923c; }
+    .stat-num.green { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .stat-num.blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+
+    /* CONTROLS */
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      cursor: pointer;
+      border: none;
+      outline: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease-in-out;
+      user-select: none;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-secondary {
+      background: #374151;
+      color: #e5e7eb;
+    }
+    .btn-secondary:hover {
+      background: #4b5563;
+    }
+
+    .btn-toggle-active {
+      background: #047857 !important;
+      color: #fff !important;
+    }
+
+    /* SUBHEADER / FILTER BAR */
+    .filter-bar {
+      background: #182234;
+      border-bottom: 1px solid #233148;
+      padding: 10px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .tab-group {
+      display: flex;
+      gap: 6px;
+      background: #0f172a;
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid #1e293b;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tab-btn.active {
+      background: #2563eb;
+      color: #fff;
+    }
+
+    .view-toggles {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* MAIN CONTAINER */
+    main {
+      padding: 24px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    /* KANBAN BOARD VIEW */
+    .kanban-view {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      align-items: start;
+    }
+
+    .column {
+      background: #131d2e;
+      border-radius: 12px;
+      border: 1px solid #23324a;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 480px;
+    }
+
+    .col-header {
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid;
+    }
+
+    .col-inkitchen { border-color: var(--status-inkitchen); }
+    .col-cooking { border-color: var(--status-cooking); }
+    .col-ready { border-color: var(--status-ready); }
+
+    .col-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .col-badge {
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-weight: 700;
+    }
+
+    .col-list {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      flex: 1;
+    }
+
+    /* CARDS */
+    .card {
+      background: var(--card-bg);
+      border-radius: 10px;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+
+    .card:hover {
+      border-color: #475569;
+      transform: translateY(-2px);
+    }
+
+    .card.status-inkitchen {
+      border-left: 5px solid var(--status-inkitchen);
+    }
+
+    .card.status-cooking {
+      border-left: 5px solid var(--status-cooking);
+      box-shadow: 0 0 12px rgba(249, 115, 22, 0.15);
+    }
+
+    .card.status-ready {
+      border-left: 5px solid var(--status-ready);
+      opacity: 0.9;
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .ticket-id {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .order-ref {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: #0f172a;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    .card-time {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .customer-box {
+      background: #0f172a;
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .customer-avatar {
+      font-size: 1.1rem;
+    }
+
+    /* ITEMS LIST (NO PRICING - STRICT EAI) */
+    .items-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .eai-badge {
+      font-size: 0.65rem;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+
+    .items-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .item-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #162032;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #24334a;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+
+    .item-row:hover {
+      background: #1c2a42;
+    }
+
+    .item-row.checked {
+      background: #0f172a;
+      border-color: #1e293b;
+      opacity: 0.6;
+    }
+
+    .item-row.checked .item-name {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+
+    .item-qty {
+      background: #3b82f6;
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.85rem;
+      min-width: 32px;
+      text-align: center;
+      padding: 3px 6px;
+      border-radius: 4px;
+    }
+
+    .item-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      flex: 1;
+    }
+
+    .item-checkbox {
+      accent-color: #10b981;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    /* CARD ACTION BUTTON */
+    .card-actions {
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn-action {
+      width: 100%;
+      padding: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      border: none;
+      transition: all 0.15s ease;
+      color: #fff;
+    }
+
+    .btn-start-cooking {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+    }
+    .btn-start-cooking:hover {
+      background: linear-gradient(135deg, #d97706, #b45309);
+    }
+
+    .btn-finish-cooking {
+      background: linear-gradient(135deg, #10b981, #059669);
+    }
+    .btn-finish-cooking:hover {
+      background: linear-gradient(135deg, #059669, #047857);
+    }
+
+    .badge-ready {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid #10b981;
+      color: #34d399;
+      padding: 8px 12px;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .callback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .callback-status.ok { color: #34d399; }
+    .callback-status.warn { color: #fbbf24; }
+
+    /* EMPTY STATE */
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+
+    .empty-icon {
+      font-size: 2.2rem;
+      opacity: 0.4;
+    }
+
+    /* TOAST NOTIFICATION */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      background: #1f2937;
+      border-left: 4px solid #3b82f6;
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 8px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideIn 0.25s ease-out;
+      max-width: 380px;
+    }
+
+    .toast.success { border-color: #10b981; }
+    .toast.warning { border-color: #f59e0b; }
+    .toast.error { border-color: #ef4444; }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .header-stats {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .filter-bar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🍳</div>
+      <div>
+        <div class="brand-title">KDS • Kitchen Display System</div>
+        <div class="brand-subtitle">
+          <span>Port 3002</span>
+          <span class="badge-port">Back-Office Dapur</span>
+          <span class="badge-eai">EAI Point-to-Point</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-stats">
+      <div class="stat-pill">
+        <span>Menunggu</span>
+        <span class="stat-num yellow" id="count-inkitchen">0</span>
+      </div>
+      <div class="stat-pill">
+        <span>Dimasak</span>
+        <span class="stat-num orange" id="count-cooking">0</span>
+      </div>
+      <div class="stat-pill">
+        <span>Siap Saji</span>
+        <span class="stat-num green" id="count-ready">0</span>
+      </div>
+      <div class="stat-pill">
+        <span>Total</span>
+        <span class="stat-num blue" id="count-total">0</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button id="btn-sound" class="btn btn-secondary" title="Bunyikan nada saat ada tiket baru">
+        🔔 <span id="sound-label">Suara: ON</span>
+      </button>
+      <button id="btn-autorefresh" class="btn btn-secondary btn-toggle-active" title="Otomatis reload data tiket">
+        ⏱️ <span id="autorefresh-label">Auto (4s)</span>
+      </button>
+      <button id="btn-refresh" class="btn btn-secondary" title="Segarkan data sekarang">
+        🔄 Refresh
+      </button>
+    </div>
+  </header>
+
+  <!-- FILTER & VIEW CONTROLS -->
+  <div class="filter-bar">
+    <div class="tab-group">
+      <button class="tab-btn active" data-filter="ALL">Semua Tiket</button>
+      <button class="tab-btn" data-filter="IN_KITCHEN">🟡 Menunggu</button>
+      <button class="tab-btn" data-filter="COOKING">🔥 Sedang Dimasak</button>
+      <button class="tab-btn" data-filter="READY_FOR_PICKUP">✅ Siap Saji</button>
+    </div>
+
+    <div class="view-toggles">
+      <span>Mode Tampilan:</span>
+      <button id="btn-view-kanban" class="btn btn-secondary btn-toggle-active">Kanban (Kolom)</button>
+      <button id="btn-view-grid" class="btn btn-secondary">Grid (Kartu)</button>
+    </div>
+  </div>
+
+  <!-- MAIN BOARD -->
+  <main>
+    <div id="board-container" class="kanban-view">
+      <!-- Diisi secara dinamis via JavaScript -->
+    </div>
+  </main>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container"></div>
+
+  <script>
+    // ==========================================
+    // STATE & CONFIG
+    // ==========================================
+    const API_URL = '/api/kitchen/tickets';
+    let currentTickets = [];
+    let activeFilter = 'ALL';
+    let viewMode = 'kanban'; // 'kanban' atau 'grid'
+    let autoRefreshInterval = null;
+    let soundEnabled = true;
+    let prevTicketIds = new Set();
+    let checkedItemsState = JSON.parse(localStorage.getItem('kds_checked_items') || '{}');
+
+    // Web Audio API beep generator (100% offline, tanpa mp3)
+    function playBeep() {
+      if (!soundEnabled) return;
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      } catch (e) {
+        console.warn('Audio Context error:', e);
+      }
+    }
+
+    // ==========================================
+    // TOAST NOTIFICATIONS
+    // ==========================================
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      
+      let icon = 'ℹ️';
+      if (type === 'success') icon = '✅';
+      if (type === 'warning') icon = '⚠️';
+      if (type === 'error') icon = '❌';
+
+      toast.innerHTML = `<span>${icon}</span><span>${message}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // ==========================================
+    // FETCH DATA
+    // ==========================================
+    async function fetchTickets(isManual = false) {
+      try {
+        const resp = await fetch(API_URL);
+        if (!resp.ok) throw new Error(`HTTP error ${resp.status}`);
+        const data = await resp.json();
+
+        // Cek tiket baru untuk notifikasi suara
+        const newIds = new Set(data.map(t => t.id));
+        if (prevTicketIds.size > 0) {
+          const freshTickets = data.filter(t => !prevTicketIds.has(t.id));
+          if (freshTickets.length > 0) {
+            playBeep();
+            showToast(`Ada ${freshTickets.length} pesanan baru masuk dari kasir!`, 'success');
+          }
+        }
+        prevTicketIds = newIds;
+
+        currentTickets = data;
+        updateStats();
+        render();
+
+        if (isManual) {
+          showToast('Data antrean dapur diperbarui', 'info');
+        }
+      } catch (err) {
+        console.error('Fetch tickets error:', err);
+        showToast(`Gagal memuat tiket: ${err.message}`, 'error');
+      }
+    }
+
+    // ==========================================
+    // STATS COUNTER
+    // ==========================================
+    function updateStats() {
+      const inKitchen = currentTickets.filter(t => t.status === 'IN_KITCHEN').length;
+      const cooking = currentTickets.filter(t => t.status === 'COOKING').length;
+      const ready = currentTickets.filter(t => t.status === 'READY_FOR_PICKUP').length;
+
+      document.getElementById('count-inkitchen').textContent = inKitchen;
+      document.getElementById('count-cooking').textContent = cooking;
+      document.getElementById('count-ready').textContent = ready;
+      document.getElementById('count-total').textContent = currentTickets.length;
+    }
+
+    // ==========================================
+    // STATUS UPDATE ACTION
+    // ==========================================
+    async function updateStatus(ticketId, newStatus) {
+      try {
+        const resp = await fetch(`${API_URL}/${ticketId}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+
+        const resData = await resp.json();
+        if (!resp.ok) throw new Error(resData.message || 'Gagal mengubah status');
+
+        // Beri feedback notifikasi
+        const statusLabel = newStatus === 'COOKING' ? 'Mulai Dimasak' : 'Siap Disajikan';
+        const callbackMsg = resData.callback_sent 
+          ? 'Callback ke Order Service berhasil dikirim' 
+          : '⚠️ Callback ke Order Service gagal (Order Service offline)';
+        
+        showToast(`Tiket #${ticketId} → ${statusLabel}. ${callbackMsg}`, resData.callback_sent ? 'success' : 'warning');
+
+        // Refresh board
+        await fetchTickets();
+      } catch (err) {
+        console.error('Update status error:', err);
+        showToast(`Error: ${err.message}`, 'error');
+      }
+    }
+
+    // ==========================================
+    // ITEM CHECKLIST INTERACTION
+    // ==========================================
+    function toggleItemCheck(ticketId, itemIdx) {
+      const key = `${ticketId}_${itemIdx}`;
+      checkedItemsState[key] = !checkedItemsState[key];
+      localStorage.setItem('kds_checked_items', JSON.stringify(checkedItemsState));
+      render();
+    }
+
+    // ==========================================
+    // TIME FORMATTER
+    // ==========================================
+    function formatTime(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function timeAgo(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '';
+      const diffMinutes = Math.floor((new Date() - d) / 60000);
+      if (diffMinutes < 1) return 'Baru saja';
+      if (diffMinutes < 60) return `${diffMinutes} mnt lalu`;
+      const diffHours = Math.floor(diffMinutes / 60);
+      return `${diffHours} jam lalu`;
+    }
+
+    // ==========================================
+    // CARD HTML BUILDER (STRICT EAI: TANPA HARGA)
+    // ==========================================
+    function buildCardHtml(ticket) {
+      const isCooking = ticket.status === 'COOKING';
+      const isReady = ticket.status === 'READY_FOR_PICKUP';
+      const isInKitchen = ticket.status === 'IN_KITCHEN';
+
+      let statusClass = 'status-inkitchen';
+      if (isCooking) statusClass = 'status-cooking';
+      if (isReady) statusClass = 'status-ready';
+
+      // Items list
+      const itemsHtml = (ticket.items || []).map((item, idx) => {
+        const isChecked = !!checkedItemsState[`${ticket.id}_${idx}`];
+        return `
+          <li class="item-row ${isChecked ? 'checked' : ''}" onclick="toggleItemCheck(${ticket.id}, ${idx})">
+            <input type="checkbox" class="item-checkbox" ${isChecked ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemCheck(${ticket.id}, ${idx})" />
+            <span class="item-qty">${item.quantity}x</span>
+            <span class="item-name">${escapeHtml(item.item_name)}</span>
+          </li>
+        `;
+      }).join('');
+
+      // Action button
+      let actionHtml = '';
+      if (isInKitchen) {
+        actionHtml = `
+          <button class="btn-action btn-start-cooking" onclick="updateStatus(${ticket.id}, 'COOKING')">
+            🍳 Mulai Masak
+          </button>
+        `;
+      } else if (isCooking) {
+        actionHtml = `
+          <button class="btn-action btn-finish-cooking" onclick="updateStatus(${ticket.id}, 'READY_FOR_PICKUP')">
+            ✅ Selesai / Siap Saji
+          </button>
+        `;
+      } else if (isReady) {
+        actionHtml = `
+          <div class="badge-ready">
+            <span>🎉 Siap Diambil Pelanggan</span>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="card ${statusClass}">
+          <div class="card-top">
+            <div>
+              <span class="ticket-id">Tiket #${ticket.id}</span>
+              <span class="order-ref">Order #${ticket.order_id}</span>
+            </div>
+            <div class="card-time" title="${ticket.created_at || ''}">
+              🕒 <span>${formatTime(ticket.created_at)}</span> • <span>${timeAgo(ticket.created_at)}</span>
+            </div>
+          </div>
+
+          <div class="customer-box">
+            <span class="customer-avatar">👤</span>
+            <span>${escapeHtml(ticket.customer_name)}</span>
+          </div>
+
+          <div>
+            <div class="items-title">
+              <span>Instruksi Masak:</span>
+              <span class="eai-badge">Non-Finansial (EAI)</span>
+            </div>
+            <ul class="items-list" style="margin-top: 6px;">
+              ${itemsHtml}
+            </ul>
+          </div>
+
+          <div class="card-actions">
+            ${actionHtml}
+            <div class="callback-status ok">
+              <span>🔄 Ref: Korrelasi #${ticket.correlation_id || ticket.order_id}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Helper anti-XSS
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // ==========================================
+    // RENDER FUNCTIONS
+    // ==========================================
+    function render() {
+      const container = document.getElementById('board-container');
+      
+      // Filter list
+      let filtered = currentTickets;
+      if (activeFilter !== 'ALL') {
+        filtered = currentTickets.filter(t => t.status === activeFilter);
+      }
+
+      if (viewMode === 'kanban' && activeFilter === 'ALL') {
+        // Mode Kanban 3 Kolom
+        container.className = 'kanban-view';
+
+        const inKitchenTickets = currentTickets.filter(t => t.status === 'IN_KITCHEN');
+        const cookingTickets = currentTickets.filter(t => t.status === 'COOKING');
+        const readyTickets = currentTickets.filter(t => t.status === 'READY_FOR_PICKUP');
+
+        container.innerHTML = `
+          <!-- Kolom 1: Menunggu -->
+          <div class="column">
+            <div class="col-header col-inkitchen">
+              <div class="col-title">
+                <span>🟡</span>
+                <span>Antrean Masuk</span>
+              </div>
+              <span class="col-badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">${inKitchenTickets.length}</span>
+            </div>
+            <div class="col-list">
+              ${inKitchenTickets.length === 0 ? renderEmpty('Belum ada tiket antrean masuk') : inKitchenTickets.map(buildCardHtml).join('')}
+            </div>
+          </div>
+
+          <!-- Kolom 2: Sedang Dimasak -->
+          <div class="column">
+            <div class="col-header col-cooking">
+              <div class="col-title">
+                <span>🔥</span>
+                <span>Sedang Dimasak</span>
+              </div>
+              <span class="col-badge" style="background: rgba(249, 115, 22, 0.2); color: #fb923c;">${cookingTickets.length}</span>
+            </div>
+            <div class="col-list">
+              ${cookingTickets.length === 0 ? renderEmpty('Tidak ada masakan yang sedang diproses') : cookingTickets.map(buildCardHtml).join('')}
+            </div>
+          </div>
+
+          <!-- Kolom 3: Siap Saji -->
+          <div class="column">
+            <div class="col-header col-ready">
+              <div class="col-title">
+                <span>✅</span>
+                <span>Siap Diambil</span>
+              </div>
+              <span class="col-badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">${readyTickets.length}</span>
+            </div>
+            <div class="col-list">
+              ${readyTickets.length === 0 ? renderEmpty('Belum ada pesanan yang siap saji') : readyTickets.map(buildCardHtml).join('')}
+            </div>
+          </div>
+        `;
+      } else {
+        // Mode Grid Flat (atau saat filter tab aktif)
+        container.className = 'kanban-view';
+        if (filtered.length === 0) {
+          container.innerHTML = `<div style="grid-column: 1/-1;">${renderEmpty('Tidak ada tiket pada kategori ini')}</div>`;
+        } else {
+          container.innerHTML = filtered.map(buildCardHtml).join('');
+        }
+      }
+    }
+
+    function renderEmpty(text) {
+      return `
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <div>${text}</div>
+        </div>
+      `;
+    }
+
+    // ==========================================
+    // EVENT LISTENERS & SETUP
+    // ==========================================
+    document.addEventListener('DOMContentLoaded', () => {
+      // Tombol refresh manual
+      document.getElementById('btn-refresh').addEventListener('click', () => fetchTickets(true));
+
+      // Tombol suara
+      const soundBtn = document.getElementById('btn-sound');
+      const soundLabel = document.getElementById('sound-label');
+      soundBtn.addEventListener('click', () => {
+        soundEnabled = !soundEnabled;
+        soundLabel.textContent = soundEnabled ? 'Suara: ON' : 'Suara: OFF';
+        soundBtn.classList.toggle('btn-toggle-active', soundEnabled);
+        if (soundEnabled) playBeep();
+      });
+
+      // Tombol Auto-refresh
+      const autoBtn = document.getElementById('btn-autorefresh');
+      const autoLabel = document.getElementById('autorefresh-label');
+      let autoEnabled = true;
+
+      function startAutoRefresh() {
+        if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+        autoRefreshInterval = setInterval(() => fetchTickets(false), 4000);
+      }
+
+      autoBtn.addEventListener('click', () => {
+        autoEnabled = !autoEnabled;
+        autoBtn.classList.toggle('btn-toggle-active', autoEnabled);
+        if (autoEnabled) {
+          autoLabel.textContent = 'Auto (4s)';
+          startAutoRefresh();
+          showToast('Auto-refresh diaktifkan (tiap 4 detik)', 'info');
+        } else {
+          autoLabel.textContent = 'Auto: OFF';
+          clearInterval(autoRefreshInterval);
+          showToast('Auto-refresh dimatikan', 'warning');
+        }
+      });
+
+      // Filter tabs
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          activeFilter = btn.dataset.filter;
+          render();
+        });
+      });
+
+      // View toggle (Kanban vs Grid)
+      const btnKanban = document.getElementById('btn-view-kanban');
+      const btnGrid = document.getElementById('btn-view-grid');
+
+      btnKanban.addEventListener('click', () => {
+        viewMode = 'kanban';
+        btnKanban.classList.add('btn-toggle-active');
+        btnGrid.classList.remove('btn-toggle-active');
+        render();
+      });
+
+      btnGrid.addEventListener('click', () => {
+        viewMode = 'grid';
+        btnGrid.classList.add('btn-toggle-active');
+        btnKanban.classList.remove('btn-toggle-active');
+        render();
+      });
+
+      // Initial run
+      fetchTickets();
+      startAutoRefresh();
+    });
+  </script>
+</body>
+</html>
