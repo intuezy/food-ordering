@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const db = require('./db');
 
 const app = express();
@@ -8,11 +9,17 @@ const KITCHEN_SERVICE_URL = process.env.KITCHEN_SERVICE_URL || 'http://localhost
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Logger request
 app.use((req, res, next) => {
   console.log(`[OrderService] ${req.method} ${req.url}`);
   next();
+});
+
+// Route utama UI Kasir
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ==============================================================================
@@ -71,7 +78,6 @@ app.post('/api/orders', async (req, res) => {
       quantity: item.quantity,
     }));
 
-    let kitchenResponseStatus = 0;
     let kitchenTicketId = null;
 
     try {
@@ -88,7 +94,6 @@ app.post('/api/orders', async (req, res) => {
           }),
         }
       );
-      kitchenResponseStatus = kitchenRes.status;
       if (kitchenRes.ok || kitchenRes.status === 201) {
         const kitchenData = await kitchenRes.json();
         kitchenTicketId = kitchenData.ticket_id || null;
@@ -171,8 +176,11 @@ app.patch('/api/orders/:id/status', (req, res) => {
   const orderId = req.params.id;
   const { status } = req.body;
 
-  if (!status) {
-    return res.status(400).json({ message: 'status wajib diisi' });
+  const VALID_STATUSES = ['PENDING', 'IN_KITCHEN', 'COOKING', 'READY_FOR_PICKUP'];
+  if (!status || !VALID_STATUSES.includes(status)) {
+    return res.status(400).json({
+      message: `status wajib diisi (${VALID_STATUSES.join(', ')})`,
+    });
   }
 
   try {

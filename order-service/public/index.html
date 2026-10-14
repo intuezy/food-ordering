@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order Service — Kasir</title>
+  <style>
+    :root {
+      --bg: #0b0d11;
+      --surface: #13161c;
+      --surface-raised: #1a1e27;
+      --border: #232836;
+      --border-hover: #31384a;
+      --text: #f0f2f7;
+      --text-muted: #8891a4;
+      --text-subtle: #555d6f;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --danger: #dc2626;
+      --danger-hover: #b91c1c;
+
+      --status-pending-bg: #1c1f26;
+      --status-pending-text: #9ca3af;
+      --status-pending-border: #374151;
+
+      --status-inkitchen-bg: #172554;
+      --status-inkitchen-text: #93c5fd;
+      --status-inkitchen-border: #1e40af;
+
+      --status-cooking-bg: #451a03;
+      --status-cooking-text: #fcd34d;
+      --status-cooking-border: #b45309;
+
+      --status-ready-bg: #064e3b;
+      --status-ready-text: #86efac;
+      --status-ready-border: #047857;
+
+      --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* TOP BAR */
+    header {
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+
+    .badge-port {
+      background: var(--surface-raised);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 4px;
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .dot-live {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+
+    .btn-icon {
+      background: var(--surface-raised);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-icon:hover {
+      border-color: var(--border-hover);
+      color: var(--text);
+    }
+
+    /* MAIN WORKSPACE */
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 460px 1fr;
+      min-height: calc(100vh - 53px);
+    }
+
+    @media (max-width: 1024px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* COLUMN A: KASIR & PEMESANAN */
+    .col-cashier {
+      border-right: 1px solid var(--border);
+      background-color: var(--surface);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .panel-section {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-subtle);
+      margin-bottom: 12px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .input-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .text-input {
+      background-color: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .text-input:focus {
+      border-color: var(--primary);
+    }
+
+    /* MENU CATALOG GRID */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .menu-card {
+      background-color: var(--surface-raised);
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 6px;
+      transition: border-color 0.15s ease;
+      user-select: none;
+    }
+
+    .menu-card:hover {
+      border-color: var(--border-hover);
+    }
+
+    .menu-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .menu-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .menu-price {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .menu-add-btn {
+      font-size: 11px;
+      color: var(--primary);
+      background: transparent;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* CART */
+    .cart-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px 24px;
+    }
+
+    .cart-empty {
+      color: var(--text-subtle);
+      font-size: 13px;
+      text-align: center;
+      padding: 24px 0;
+    }
+
+    .cart-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    .cart-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: var(--bg);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 6px;
+      gap: 12px;
+    }
+
+    .cart-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .cart-item-title {
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cart-item-unit {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-subtle);
+    }
+
+    .cart-qty-ctrl {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface-raised);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 4px;
+    }
+
+    .qty-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      cursor: pointer;
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .qty-btn:hover {
+      color: var(--text);
+    }
+
+    .qty-val {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      min-width: 18px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .cart-item-subtotal {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      min-width: 70px;
+      text-align: right;
+    }
+
+    .cart-del-btn {
+      background: none;
+      border: none;
+      color: var(--text-subtle);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px 4px;
+      line-height: 1;
+    }
+
+    .cart-del-btn:hover {
+      color: var(--danger);
+    }
+
+    /* CART FOOTER */
+    .cart-summary {
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .summary-total {
+      display: flex;
+      justify-content: space-between;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .summary-total .val {
+      font-family: var(--font-mono);
+    }
+
+    .btn-submit {
+      width: 100%;
+      background-color: var(--primary);
+      color: #fff;
+      border: none;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      background-color: var(--primary-hover);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* COLUMN B: LIVE MONITOR */
+    .col-monitor {
+      background-color: var(--bg);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .monitor-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .filter-pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 12px;
+      padding: 5px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .filter-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text);
+    }
+
+    .filter-btn.active {
+      background: var(--surface-raised);
+      border-color: var(--border-hover);
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .monitor-body {
+      padding: 24px;
+      flex: 1;
+    }
+
+    .orders-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+      gap: 14px;
+    }
+
+    .order-card {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color 0.15s ease;
+    }
+
+    .order-card:hover {
+      border-color: var(--border-hover);
+    }
+
+    .order-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .order-id {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .order-customer {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* STATUS BADGE */
+    .status-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    .status-badge.PENDING {
+      background: var(--status-pending-bg);
+      color: var(--status-pending-text);
+      border-color: var(--status-pending-border);
+    }
+
+    .status-badge.IN_KITCHEN {
+      background: var(--status-inkitchen-bg);
+      color: var(--status-inkitchen-text);
+      border-color: var(--status-inkitchen-border);
+    }
+
+    .status-badge.COOKING {
+      background: var(--status-cooking-bg);
+      color: var(--status-cooking-text);
+      border-color: var(--status-cooking-border);
+    }
+
+    .status-badge.READY_FOR_PICKUP {
+      background: var(--status-ready-bg);
+      color: var(--status-ready-text);
+      border-color: var(--status-ready-border);
+    }
+
+    .order-items-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .order-item-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+
+    .order-item-name {
+      color: var(--text);
+    }
+
+    .order-item-price {
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .order-card-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+    }
+
+    .order-time {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-subtle);
+    }
+
+    .order-total-price {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* TOAST */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--surface-raised);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 13px;
+      padding: 10px 16px;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      display: none;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-title">Order Service</div>
+      <span class="badge-port">PORT 3001</span>
+      <span class="badge-port">KASIR</span>
+    </div>
+    <div class="header-meta">
+      <div class="status-indicator">
+        <span class="dot-live"></span>
+        <span id="poll-info">Auto-sync aktif</span>
+      </div>
+      <button class="btn-icon" id="btn-refresh" onclick="fetchOrders()">
+        Perbarui
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- KIRI: FORM & CART KASIR -->
+    <section class="col-cashier">
+      <div class="panel-section">
+        <div class="section-label">1. Data Pelanggan</div>
+        <div class="input-group">
+          <label class="input-label" for="customer-name">Nama Pelanggan</label>
+          <input type="text" id="customer-name" class="text-input" placeholder="Masukkan nama (misal: Budi)" autocomplete="off" />
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="section-label">2. Katalog Menu</div>
+        <div class="menu-grid" id="menu-grid">
+          <!-- Item menu default -->
+        </div>
+      </div>
+
+      <div class="cart-wrapper">
+        <div>
+          <div class="section-label">3. Ringkasan Keranjang</div>
+          <div id="cart-empty-state" class="cart-empty">Keranjang kosong. Pilih menu di atas.</div>
+          <ul class="cart-list" id="cart-list"></ul>
+        </div>
+
+        <div class="cart-summary">
+          <div class="summary-row">
+            <span>Total Item</span>
+            <span id="cart-item-count" style="font-family: var(--font-mono);">0 porsi</span>
+          </div>
+          <div class="summary-total">
+            <span>Total Tagihan</span>
+            <span class="val" id="cart-total-price">Rp 0</span>
+          </div>
+          <button class="btn-submit" id="btn-submit-order" onclick="submitOrder()">
+            Kirim Pesanan ke Dapur
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- KANAN: LIVE MONITOR PESANAN -->
+    <section class="col-monitor">
+      <div class="monitor-header">
+        <div class="section-label" style="margin-bottom: 0;">Monitor Status Pesanan</div>
+        <div class="filter-pills" id="filter-pills">
+          <button class="filter-btn active" data-filter="ALL" onclick="setFilter('ALL')">Semua</button>
+          <button class="filter-btn" data-filter="PENDING" onclick="setFilter('PENDING')">PENDING</button>
+          <button class="filter-btn" data-filter="IN_KITCHEN" onclick="setFilter('IN_KITCHEN')">IN_KITCHEN</button>
+          <button class="filter-btn" data-filter="COOKING" onclick="setFilter('COOKING')">COOKING</button>
+          <button class="filter-btn" data-filter="READY_FOR_PICKUP" onclick="setFilter('READY_FOR_PICKUP')">READY_FOR_PICKUP</button>
+        </div>
+      </div>
+
+      <div class="monitor-body">
+        <div class="orders-grid" id="orders-grid">
+          <!-- Render order cards -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Preset Menu
+    const MENU_CATALOG = [
+      { id: 'm1', name: 'Nasi Goreng Spesial', price: 25000 },
+      { id: 'm2', name: 'Mie Goreng Seafood', price: 28000 },
+      { id: 'm3', name: 'Ayam Bakar Madu', price: 30000 },
+      { id: 'm4', name: 'Es Teh Manis', price: 5000 },
+      { id: 'm5', name: 'Kopi Tubruk', price: 10000 },
+      { id: 'm6', name: 'Jus Alpukat', price: 15000 },
+    ];
+
+    let cart = [];
+    let orders = [];
+    let currentFilter = 'ALL';
+
+    function formatRupiah(num) {
+      return 'Rp ' + Number(num || 0).toLocaleString('id-ID');
+    }
+
+    // Render katalog menu
+    function renderCatalog() {
+      const grid = document.getElementById('menu-grid');
+      grid.innerHTML = MENU_CATALOG.map((m) => `
+        <div class="menu-card" onclick="addToCart('${m.id}')">
+          <div class="menu-name">${m.name}</div>
+          <div class="menu-meta">
+            <span class="menu-price">${formatRupiah(m.price)}</span>
+            <button class="menu-add-btn">+ Tambah</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function addToCart(menuId) {
+      const item = MENU_CATALOG.find((m) => m.id === menuId);
+      if (!item) return;
+
+      const existing = cart.find((c) => c.item_name === item.name);
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        cart.push({
+          item_name: item.name,
+          price: item.price,
+          quantity: 1
+        });
+      }
+      renderCart();
+    }
+
+    function changeQty(index, delta) {
+      if (!cart[index]) return;
+      cart[index].quantity += delta;
+      if (cart[index].quantity <= 0) {
+        cart.splice(index, 1);
+      }
+      renderCart();
+    }
+
+    function deleteCartItem(index) {
+      cart.splice(index, 1);
+      renderCart();
+    }
+
+    function renderCart() {
+      const list = document.getElementById('cart-list');
+      const emptyState = document.getElementById('cart-empty-state');
+      const itemCount = document.getElementById('cart-item-count');
+      const totalPrice = document.getElementById('cart-total-price');
+
+      if (cart.length === 0) {
+        emptyState.style.display = 'block';
+        list.innerHTML = '';
+        itemCount.textContent = '0 porsi';
+        totalPrice.textContent = 'Rp 0';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+
+      let totalPortion = 0;
+      let totalAmount = 0;
+
+      list.innerHTML = cart.map((item, idx) => {
+        const subtotal = item.price * item.quantity;
+        totalPortion += item.quantity;
+        totalAmount += subtotal;
+
+        return `
+          <li class="cart-item">
+            <div class="cart-item-info">
+              <div class="cart-item-title">${item.item_name}</div>
+              <div class="cart-item-unit">${formatRupiah(item.price)}</div>
+            </div>
+            <div class="cart-qty-ctrl">
+              <button class="qty-btn" onclick="changeQty(${idx}, -1)">−</button>
+              <span class="qty-val">${item.quantity}</span>
+              <button class="qty-btn" onclick="changeQty(${idx}, 1)">+</button>
+            </div>
+            <div class="cart-item-subtotal">${formatRupiah(subtotal)}</div>
+            <button class="cart-del-btn" title="Hapus" onclick="deleteCartItem(${idx})">×</button>
+          </li>
+        `;
+      }).join('');
+
+      itemCount.textContent = `${totalPortion} porsi`;
+      totalPrice.textContent = formatRupiah(totalAmount);
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3000);
+    }
+
+    // Submit order ke API Order Service (POST /api/orders)
+    async function submitOrder() {
+      const nameInput = document.getElementById('customer-name');
+      const customerName = nameInput.value.trim();
+      const submitBtn = document.getElementById('btn-submit-order');
+
+      if (!customerName) {
+        showToast('Masukkan nama pelanggan terlebih dahulu');
+        nameInput.focus();
+        return;
+      }
+
+      if (cart.length === 0) {
+        showToast('Pilih minimal satu menu');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Mengirim...';
+
+      try {
+        const payload = {
+          customer_name: customerName,
+          items: cart.map((c) => ({
+            item_name: c.item_name,
+            quantity: c.quantity,
+            price: c.price
+          }))
+        };
+
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || 'Gagal membuat pesanan');
+        }
+
+        const data = await res.json();
+        showToast(`Pesanan #${data.order_id} dibuat (${data.status})`);
+
+        // Reset form
+        nameInput.value = '';
+        cart = [];
+        renderCart();
+
+        // Refresh orders list
+        fetchOrders();
+      } catch (err) {
+        showToast(`Error: ${err.message}`);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Kirim Pesanan ke Dapur';
+      }
+    }
+
+    // Filter status
+    function setFilter(status) {
+      currentFilter = status;
+      document.querySelectorAll('.filter-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.filter === status);
+      });
+      renderOrders();
+    }
+
+    // Fetch daftar order dari API (GET /api/orders)
+    async function fetchOrders() {
+      try {
+        const res = await fetch('/api/orders');
+        if (!res.ok) return;
+        orders = await res.json();
+        renderOrders();
+      } catch (err) {
+        console.error('Gagal mengambil daftar order:', err);
+      }
+    }
+
+    function renderOrders() {
+      const grid = document.getElementById('orders-grid');
+      let filtered = orders;
+      if (currentFilter !== 'ALL') {
+        filtered = orders.filter((o) => o.status === currentFilter);
+      }
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1/-1; padding: 40px 0; text-align: center; color: var(--text-subtle);">
+            Tidak ada pesanan dengan status ${currentFilter}
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = filtered.map((o) => `
+        <div class="order-card">
+          <div class="order-card-top">
+            <div>
+              <div class="order-id">#ORD-${String(o.id).padStart(3, '0')}</div>
+              <div class="order-customer">${escapeHtml(o.customer_name)}</div>
+            </div>
+            <span class="status-badge ${o.status}">${o.status}</span>
+          </div>
+
+          <div class="order-items-box">
+            ${(o.items || []).map((item) => `
+              <div class="order-item-row">
+                <span class="order-item-name">${item.quantity}x ${escapeHtml(item.item_name)}</span>
+                <span class="order-item-price">${formatRupiah(item.price * item.quantity)}</span>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="order-card-bottom">
+            <span class="order-time">${o.created_at || '-'}</span>
+            <span class="order-total-price">${formatRupiah(o.total_price)}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Inisialisasi
+    renderCatalog();
+    renderCart();
+    fetchOrders();
+
+    // Auto-polling setiap 3 detik
+    setInterval(fetchOrders, 3000);
+  </script>
+</body>
+</html>
