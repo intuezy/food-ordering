@@ -3,3 +3,6 @@ node_modules/
 *.db-journal
 .env
 .DS_Store
+
+# Pix Agent
+.pi/
